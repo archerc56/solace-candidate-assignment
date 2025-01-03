@@ -1,0 +1,1 @@
+I did not actually configure a database, but I wanted to add pagination and filtering to the API, so this folder contains mocked queries with the seed data.
