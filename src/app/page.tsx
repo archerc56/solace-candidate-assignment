@@ -1,91 +1,105 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { AdvocateTable } from "./components/AdvocateTable";
+import { SearchInput } from "./components/SearchInput";
+import { Button, Typography } from "@material-tailwind/react";
+
+export interface Advocate {
+  firstName: string,
+  lastName: string,
+  city: string,
+  degree: string,
+  specialties: string[],
+  yearsOfExperience: number,
+  phoneNumber: number
+}
 
 export default function Home() {
-  const [advocates, setAdvocates] = useState([]);
-  const [filteredAdvocates, setFilteredAdvocates] = useState([]);
+  const RESULTS_PER_PAGE = 6;
+  const [advocates, setAdvocates] = useState<Advocate[]>([]);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [totalNumberOfPages, setTotalNumberOfPages] = useState(0);
+  const [currentSearchTerms, setCurrentSearchTerms] = useState<string[]>([]);
+  const [noResultsText, setNoResultsText] = useState("Loading initial results...")
 
-  useEffect(() => {
-    console.log("fetching advocates...");
-    fetch("/api/advocates").then((response) => {
+  /**
+   * Runs the search with the given criteria and updates state with results
+   * 
+   * @param currentPageNumber Numeric current page number
+   * @param searchTerms Array of search criteria
+   */
+  const runSearch = (currentPageNumber: number, searchTerms: string[]) => {
+    fetch("../api/advocates?" + new URLSearchParams([
+      ["page", currentPageNumber.toString()],
+      ["searchTerms", searchTerms.toString()]
+
+    ])).then((response) => {
       response.json().then((jsonResponse) => {
-        setAdvocates(jsonResponse.data);
-        setFilteredAdvocates(jsonResponse.data);
+        setAdvocates(jsonResponse.data.searchResults);
+        setTotalNumberOfPages(Math.ceil(jsonResponse.data.totalNumberOfMatches / RESULTS_PER_PAGE));
       });
     });
+  }
+
+  useEffect(() => {
+    runSearch(0, []);
+    setNoResultsText("No results found, please update search criteria");
   }, []);
 
-  const onChange = (e) => {
-    const searchTerm = e.target.value;
+  const handleSearchClick = () => {
+    setCurrentPage(0);
+    runSearch(0, currentSearchTerms);
+  }
 
-    document.getElementById("search-term").innerHTML = searchTerm;
+  const handleResetClick = () => {
+    setCurrentPage(0);
+    setCurrentSearchTerms([]);
+    runSearch(0, []);
+  }
 
-    console.log("filtering advocates...");
-    const filteredAdvocates = advocates.filter((advocate) => {
-      return (
-        advocate.firstName.includes(searchTerm) ||
-        advocate.lastName.includes(searchTerm) ||
-        advocate.city.includes(searchTerm) ||
-        advocate.degree.includes(searchTerm) ||
-        advocate.specialties.includes(searchTerm) ||
-        advocate.yearsOfExperience.includes(searchTerm)
-      );
-    });
-
-    setFilteredAdvocates(filteredAdvocates);
-  };
-
-  const onClick = () => {
-    console.log(advocates);
-    setFilteredAdvocates(advocates);
-  };
+  const handleChangePage = (newPageNumber: number) => {
+    setCurrentPage(newPageNumber);
+    runSearch(newPageNumber, currentSearchTerms);
+  }
 
   return (
-    <main style={{ margin: "24px" }}>
-      <h1>Solace Advocates</h1>
-      <br />
-      <br />
+    <main className="m-5">
       <div>
-        <p>Search</p>
-        <p>
-          Searching for: <span id="search-term"></span>
-        </p>
-        <input style={{ border: "1px solid black" }} onChange={onChange} />
-        <button onClick={onClick}>Reset Search</button>
+        <Typography variant="h1" className="text-primary-green flex justify-center mb-3"  >
+          Solace Advocates
+        </Typography>
+        <Typography className="text-primary-green">
+          Find a care advocate who will help you unlock better healthcare by phone or video—no matter what you need.
+        </Typography>
       </div>
-      <br />
-      <br />
-      <table>
-        <thead>
-          <th>First Name</th>
-          <th>Last Name</th>
-          <th>City</th>
-          <th>Degree</th>
-          <th>Specialties</th>
-          <th>Years of Experience</th>
-          <th>Phone Number</th>
-        </thead>
-        <tbody>
-          {filteredAdvocates.map((advocate) => {
-            return (
-              <tr>
-                <td>{advocate.firstName}</td>
-                <td>{advocate.lastName}</td>
-                <td>{advocate.city}</td>
-                <td>{advocate.degree}</td>
-                <td>
-                  {advocate.specialties.map((s) => (
-                    <div>{s}</div>
-                  ))}
-                </td>
-                <td>{advocate.yearsOfExperience}</td>
-                <td>{advocate.phoneNumber}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+      <SearchInput currentSearchTerms={currentSearchTerms} onUpdateSearchTerms={setCurrentSearchTerms} />
+      <div className="flex mb-4">
+        <Button className="hover:bg-primary-green-darker mr-2 bg-primary-green text-white"
+          type="button"
+          onClick={handleSearchClick}>
+          Search
+        </Button>
+        <Button
+          className="hover:bg-primary-green-transparent bg-white border-primary-green hover:border-primary-green-transparent border-2 text-primary-green-darker"
+          type="button"
+          onClick={handleResetClick}>
+          Reset
+        </Button>
+      </div>
+      {advocates.length !== 0 ?
+        <AdvocateTable
+          advocates={advocates}
+          currentPage={currentPage}
+          numberOfPages={totalNumberOfPages}
+          handleChangePage={handleChangePage}
+        /> :
+        <Typography
+          className="text-primary-green flex justify-center mt-3"
+          variant="h5">
+          {noResultsText}
+        </Typography>
+      }
     </main>
   );
 }

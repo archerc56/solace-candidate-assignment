@@ -1,12 +1,21 @@
-import db from "../../../db";
-import { advocates } from "../../../db/schema";
-import { advocateData } from "../../../db/seed/advocates";
+import { fetchQuery } from "@/db/queries/fetchQuery";
+import { type NextRequest } from 'next/server'
 
-export async function GET() {
-  // Uncomment this line to use a database
-  // const data = await db.select().from(advocates);
+/**
+ * GET REST endpoint for querying advocates
+ * 
+ * @param request NextRequest with page and searchTerms query parameters
+ * @returns Response with results
+ */
+export async function GET(request: NextRequest) {
+  const searchParams = request.nextUrl.searchParams;
+  const pageNumberString = searchParams.get('page');
 
-  const data = advocateData;
+  const pageNumber = Number(pageNumberString);
+  const searchTerms = searchParams.get("searchTerms");
+  const formattedSearchTerms = searchTerms ? searchTerms.split(",") : [];
+  
+  const data = fetchQuery(pageNumber, formattedSearchTerms);
 
   return Response.json({ data });
 }
